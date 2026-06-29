@@ -4,32 +4,21 @@ import { useState, useEffect } from "react";
 import { 
   Users, UserPlus, Search, Shield, Trash2, Edit2, 
   RefreshCw, Eye, EyeOff, Lock, Mail, User as UserIcon,
-  Filter, CheckCircle, XCircle, AlertCircle, Loader2
+  Filter, CheckCircle, XCircle, AlertCircle, Loader2,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import axios from "axios";
-
-// --- Types ---
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: "ADMIN" | "PHOTOGRAPHER";
-  status: "ACTIVE" | "PENDING" | "SUSPENDED";
-  joinedDate: string;
-  avatar?: string;
-};
+import { User, PaginatedResponse, UserFilters } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v0.1";
 
-// Axios instance with auth interceptor
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Add token to all requests
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -38,19 +27,17 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Handle unauthorized responses
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       toast.error("Session expired. Please login again.");
-      // Optionally redirect to login page
-      // window.location.href = "/login";
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setTimeout(() => window.location.href = "/auth/login", 2000);
     }
     return Promise.reject(error);
   }
@@ -64,18 +51,56 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [filterRole, setFilterRole] = useState<"ALL" | "ADMIN" | "PHOTOGRAPHER">("ALL");
-  const [filterStatus, setFilterStatus] = useState<"ALL" | "ACTIVE" | "PENDING" | "SUSPENDED">("ALL");
+  const [filterStatus, setFilterStatus] = useState<"ALL" | "ACTIVE" | "SUSPENDED">("ALL");
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalPages: 0,
+    totalElements: 0
+  });
 
-  // Fetch users on component mount
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  // Fetch users with filters and pagination
+  const fetchUsers = async (page = pagination.page, size = pagination.size) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get("/users");
-      setUsers(response.data);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Authentication required");
+        return;
+      }
+
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("size", String(size));
+      params.append("sort", "name");
+      params.append("order", "asc");
+      
+      if (searchTerm) {
+        params.append("name", searchTerm);
+      }
+      
+      if (filterRole !== "ALL") {
+        params.append("role", filterRole);
+      }
+
+      // Fetch from backend with all filters
+      const response = await apiClient.get<PaginatedResponse<User>>(
+        `/admin/users?${params.toString()}`
+      );
+
+      // Set users from response content
+      setUsers(response.data.content);
+      setPagination({
+        page: response.data.number,
+        size: response.data.size,
+        totalPages: response.data.totalPages,
+        totalElements: response.data.totalElements
+      });
+
+      console.log("Fetched users with pagination:", response.data);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast.error(error.response?.data?.message || "Failed to load users");
@@ -84,18 +109,46 @@ export default function UserManagementPage() {
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === "ALL" || u.role === filterRole;
-    const matchesStatus = filterStatus === "ALL" || u.status === filterStatus;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Fetch on component mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please login to continue");
+      window.location.href = "/auth/login";
+      return;
+    }
+    fetchUsers(0, 10);
+  }, []);
 
-  const handleCreateUser = async (userData: Omit<User, "id" | "joinedDate"> & { password: string }) => {
+  // Fetch when filters change
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchUsers(0, pagination.size);
+    }, 500); // Debounce search
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, filterRole]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 0 && newPage < pagination.totalPages) {
+      fetchUsers(newPage, pagination.size);
+    }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    fetchUsers(0, newSize);
+  };
+
+  const handleCreateUser = async (userData: Omit<User, "id" | "createdAt"> & { password: string }) => {
     try {
-      const response = await apiClient.post("/users", userData);
-      setUsers([response.data, ...users]);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Authentication required");
+        return false;
+      }
+
+      await apiClient.post("/auth/register", userData);
+      await fetchUsers(0, pagination.size);
       toast.success("User created successfully!");
       return true;
     } catch (error: any) {
@@ -107,8 +160,14 @@ export default function UserManagementPage() {
 
   const handleUpdateUser = async (userId: string, userData: Partial<User>) => {
     try {
-      const response = await apiClient.put(`/users/${userId}`, userData);
-      setUsers(users.map(u => u.id === userId ? response.data : u));
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Authentication required");
+        return false;
+      }
+
+      await apiClient.put(`/user/${userId}`, userData);
+      await fetchUsers(pagination.page, pagination.size);
       toast.success("User updated successfully!");
       return true;
     } catch (error: any) {
@@ -119,6 +178,12 @@ export default function UserManagementPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
     toast.custom((t) => (
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xl max-w-md">
         <div className="flex items-start gap-3">
@@ -130,8 +195,8 @@ export default function UserManagementPage() {
               <button
                 onClick={async () => {
                   try {
-                    await apiClient.delete(`/users/${userId}`);
-                    setUsers(users.filter(u => u.id !== userId));
+                    await apiClient.delete(`/user/${userId}`);
+                    await fetchUsers(pagination.page, pagination.size);
                     toast.dismiss(t);
                     toast.success("User deleted successfully");
                   } catch (error: any) {
@@ -156,15 +221,25 @@ export default function UserManagementPage() {
     ), { duration: 5000 });
   };
 
-  const handleStatusToggle = async (userId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+  const handleStatusToggle = async (userId: string, currentEnabledStatus: boolean) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    const nextEnabledStatus = !currentEnabledStatus;
+
     try {
-      await apiClient.patch(`/users/${userId}/status`, { status: newStatus });
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, status: newStatus as any } : u
-      ));
-      toast.success(`User ${newStatus === "ACTIVE" ? "activated" : "suspended"} successfully`);
+      await apiClient.patch(
+        `/admin/suspend-account/${userId}`, 
+        { enabled: nextEnabledStatus }
+      );
+
+      await fetchUsers(pagination.page, pagination.size);
+      toast.success(`User ${nextEnabledStatus ? "activated" : "suspended"} successfully`);
     } catch (error: any) {
+      console.error("Error toggling user status:", error);
       toast.error(error.response?.data?.message || "Failed to update user status");
     }
   };
@@ -175,9 +250,14 @@ export default function UserManagementPage() {
     setIsModalOpen(true);
   };
 
+  // Stats are computed from the current page data, not all users
+  // Consider fetching stats separately if needed
+  const activeUsers = users.filter(u => u.enabled).length;
+  const suspendedUsers = users.filter(u => !u.enabled).length;
+
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
@@ -186,12 +266,14 @@ export default function UserManagementPage() {
             </div>
             User Management
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Manage and monitor all system access accounts</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Total: {pagination.totalElements} users
+          </p>
         </div>
         
         <div className="flex gap-3">
           <button 
-            onClick={fetchUsers}
+            onClick={() => fetchUsers(pagination.page, pagination.size)}
             className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
             disabled={isLoading}
           >
@@ -213,21 +295,19 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* Filters Section */}
+      {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
-        {/* Search */}
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input 
             type="text" 
-            placeholder="Search by name or email..."
+            placeholder="Search by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
           />
         </div>
 
-        {/* Role Filter */}
         <div className="flex gap-2">
           <div className="relative">
             <select
@@ -241,40 +321,27 @@ export default function UserManagementPage() {
             </select>
             <Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
           </div>
-
-          <div className="relative">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="appearance-none bg-white border border-slate-200 px-4 py-2.5 pr-8 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
-            >
-              <option value="ALL">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="PENDING">Pending</option>
-              <option value="SUSPENDED">Suspended</option>
-            </select>
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-          </div>
         </div>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats - Show paginated stats or total if available */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 font-medium">Total Users</p>
+          <p className="text-xs text-slate-500 font-medium">Current Page</p>
           <p className="text-2xl font-bold text-slate-900">{users.length}</p>
+          <p className="text-xs text-slate-400">users on page {pagination.page + 1}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 font-medium">Active</p>
-          <p className="text-2xl font-bold text-emerald-600">{users.filter(u => u.status === "ACTIVE").length}</p>
+          <p className="text-xs text-slate-500 font-medium">Active (Page)</p>
+          <p className="text-2xl font-bold text-emerald-600">{activeUsers}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 font-medium">Pending Approval</p>
-          <p className="text-2xl font-bold text-amber-600">{users.filter(u => u.status === "PENDING").length}</p>
+          <p className="text-xs text-slate-500 font-medium">Suspended (Page)</p>
+          <p className="text-2xl font-bold text-red-600">{suspendedUsers}</p>
         </div>
       </div>
 
-      {/* Table Container */}
+      {/* Table */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -297,7 +364,7 @@ export default function UserManagementPage() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredUsers.length === 0 ? (
+              ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <Users className="mx-auto text-slate-300 mb-3" size={48} />
@@ -306,7 +373,7 @@ export default function UserManagementPage() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                users.map((user) => (
                   <motion.tr 
                     key={user.id} 
                     initial={{ opacity: 0 }}
@@ -315,8 +382,8 @@ export default function UserManagementPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center font-bold text-emerald-700">
-                          {user.name?.charAt(0)}
+                        <div className="w-10 h-10 rounded-full bg-linear-to-br from-emerald-100 to-emerald-50 flex items-center justify-center font-bold text-emerald-700">
+                          {user.name?.charAt(0) || "U"}
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900">{user.name}</p>
@@ -336,16 +403,14 @@ export default function UserManagementPage() {
                     <td className="px-6 py-4">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 text-xs font-semibold",
-                        user.status === "ACTIVE" ? "text-emerald-600" : 
-                        user.status === "PENDING" ? "text-amber-600" : "text-red-600"
+                        user.enabled ? "text-emerald-600" : "text-red-600"
                       )}>
-                        {user.status === "ACTIVE" ? <CheckCircle size={14} /> :
-                         user.status === "PENDING" ? <AlertCircle size={14} /> : <XCircle size={14} />}
-                        {user.status}
+                        {user.enabled ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                        {user.enabled ? "ACTIVE" : "SUSPENDED"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
-                      {new Date(user.joinedDate).toLocaleDateString('en-US', { 
+                      {new Date(user.createdAt).toLocaleDateString('en-US', { 
                         year: 'numeric', 
                         month: 'short', 
                         day: 'numeric' 
@@ -354,11 +419,11 @@ export default function UserManagementPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button 
-                          onClick={() => handleStatusToggle(user.id, user.status)}
+                          onClick={() => handleStatusToggle(user.id, user.enabled)}
                           className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"
-                          title={user.status === "ACTIVE" ? "Suspend User" : "Activate User"}
+                          title={user.enabled ? "Suspend User" : "Activate User"}
                         >
-                          {user.status === "ACTIVE" ? <EyeOff size={16} /> : <Eye size={16} />}
+                          {user.enabled ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                         <button 
                           onClick={() => handleEditUser(user)}
@@ -382,6 +447,71 @@ export default function UserManagementPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <span>Showing</span>
+            <select
+              value={pagination.size}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="border border-slate-200 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>per page</span>
+            <span className="hidden sm:inline">
+              • {pagination.totalElements} total users
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page === 0}
+              className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                // Show pages around current page
+                let pageNum = i;
+                if (pagination.totalPages > 5) {
+                  const start = Math.max(0, Math.min(pagination.page - 2, pagination.totalPages - 5));
+                  pageNum = start + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={cn(
+                      "w-8 h-8 rounded-lg text-sm font-medium transition-all",
+                      pagination.page === pageNum
+                        ? "bg-emerald-600 text-white"
+                        : "hover:bg-slate-100 text-slate-600"
+                    )}
+                  >
+                    {pageNum + 1}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page >= pagination.totalPages - 1}
+              className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Modal */}
@@ -401,18 +531,31 @@ export default function UserManagementPage() {
   );
 }
 
-// --- User Modal Component ---
-function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMode }: any) {
+function UserModal({ 
+  isOpen, 
+  onClose, 
+  onCreateUser, 
+  onUpdateUser, 
+  user, 
+  isEditMode 
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreateUser: (data: any) => Promise<boolean>;
+  onUpdateUser: (id: string, data: any) => Promise<boolean>;
+  user: User | null;
+  isEditMode: boolean;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ 
-    name: user?.name || "", 
-    email: user?.email || "", 
-    role: user?.role || "PHOTOGRAPHER", 
+    name: "", 
+    email: "", 
+    role: "PHOTOGRAPHER" as "ADMIN" | "PHOTOGRAPHER", 
     password: "" 
   });
   const [showPassword, setShowPassword] = useState(false);
 
-  // Reset form when modal opens/closes or user changes
+  // Reset form when modal opens or user changes
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -421,13 +564,14 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
         role: user?.role || "PHOTOGRAPHER",
         password: ""
       });
+      setShowPassword(false);
     }
   }, [isOpen, user]);
 
   const generatePassword = () => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
     let retVal = "";
-    for (let i = 0; i < 12; ++i) {
+    for (let i = 0; i < 12; i++) {
       retVal += charset.charAt(Math.floor(Math.random() * charset.length));
     }
     setFormData({ ...formData, password: retVal });
@@ -440,9 +584,16 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
     
     let success = false;
     if (isEditMode && user) {
+      // For edit, remove password if empty
       const { password, ...updateData } = formData;
       success = await onUpdateUser(user.id, updateData);
     } else {
+      // For create, require password
+      if (!formData.password) {
+        toast.error("Password is required for new users");
+        setIsSubmitting(false);
+        return;
+      }
       success = await onCreateUser(formData);
     }
     
@@ -455,7 +606,8 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+          {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
@@ -464,12 +616,14 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           />
 
+          {/* Modal */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 20 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white w-full max-w-md rounded-2xl shadow-2xl relative z-10"
           >
+            {/* Header */}
             <div className="p-6 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-50 rounded-xl">
@@ -486,6 +640,7 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
               </div>
             </div>
 
+            {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {/* Name */}
               <div className="space-y-1.5">
@@ -519,7 +674,7 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
                 </div>
               </div>
 
-              {/* Password - Only show in create mode */}
+              {/* Password - Only for new users */}
               {!isEditMode && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
@@ -550,6 +705,9 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  <p className="text-[10px] text-slate-400">
+                    Min 8 characters with letters, numbers, and symbols
+                  </p>
                 </div>
               )}
 
@@ -557,19 +715,19 @@ function UserModal({ isOpen, onClose, onCreateUser, onUpdateUser, user, isEditMo
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">System Role</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {["PHOTOGRAPHER", "ADMIN"].map((r) => (
+                  {["PHOTOGRAPHER", "ADMIN"].map((role) => (
                     <button 
-                      key={r} 
+                      key={role} 
                       type="button" 
-                      onClick={() => setFormData({...formData, role: r as any})}
+                      onClick={() => setFormData({...formData, role: role as "ADMIN" | "PHOTOGRAPHER"})}
                       className={cn(
                         "py-2.5 rounded-lg text-xs font-semibold transition-all border",
-                        formData.role === r 
+                        formData.role === role 
                           ? "bg-emerald-600 border-emerald-600 text-white shadow-sm" 
                           : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                       )}
                     >
-                      {r}
+                      {role}
                     </button>
                   ))}
                 </div>

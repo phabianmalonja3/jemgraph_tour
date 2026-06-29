@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </main>
 
-        <Toaster position="top-center" richColors theme="dark" />
+        {/* <Toaster position="top-center" richColors theme="dark" /> */}
       </div>
     </AuthProvider>
   );

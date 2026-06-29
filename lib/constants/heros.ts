@@ -10,14 +10,14 @@
   
   export const heroSlides : Hero[] = [
     {
-      image: "/images/hero.jpg",
+      image: "/banners/bg.jpg",
       title: "Capture Your Journey",
       highlight: "With Expert Eyes",
       subtitle: "Professional photographer guiding you through breathtaking locations. Create memories that last forever.",
       tag: "Professional Photography Tours"
     },
     {
-      image: "/images/hero-1.jpg",
+      image: "/banners/bg1.jpg",
       title: "Adventure Awaits",
       highlight: "Every Moment Counts",
       subtitle: "From mountain peaks to ocean depths, we capture the thrill of your greatest adventures.",
