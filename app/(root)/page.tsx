@@ -378,22 +378,7 @@ export default function Home() {
 
       <PhotographyPackages />
 
-      {/* Gallery Section */}
-      <section ref={galleryRef} className="py-16 md:py-24 px-4 bg-white dark:bg-black">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">Recent Adventures</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {gallery.map((img, i) => (
-              <div key={i} className="gallery-item aspect-square relative rounded-xl overflow-hidden group">
-                <Image src={img} alt="Gallery" fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
+  
       {/* Testimonials Section */}
       <section ref={testimonialsRef} className="py-16 md:py-24 px-4 bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-6xl mx-auto">
@@ -416,15 +401,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-[#25632D] text-center text-white">
-        <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to Capture Your Adventure?</h2>
-        <Link href="/booking">
-          <Button className="bg-white text-emerald-900 hover:bg-zinc-100 px-10 h-14 rounded-full text-lg">
-            Start Your Journey <FaArrowRight className="ml-2" />
-          </Button>
-        </Link>
-      </section>
+     
 
       {/* Footer */}
       <Footer />

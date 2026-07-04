@@ -26,6 +26,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Footer from "@/components/web/Footer";
 
 if (typeof window !== "undefined") {
     gsap.registerPlugin(ScrollTrigger);
@@ -152,6 +153,7 @@ export default function AboutPage() {
     ];
 
     return (
+        <>
         <div className="flex flex-col min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-black dark:to-zinc-900">
             {/* Hero Section */}
             <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
@@ -172,10 +174,7 @@ export default function AboutPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                     >
-                        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
-                            <FaHeart className="text-rose-400" />
-                            <span className="text-white text-sm">Our Story</span>
-                        </div>
+
                     </motion.div>
 
                     <motion.h1
@@ -353,50 +352,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Timeline Section */}
-            <section className="py-20 px-6 bg-zinc-50 dark:bg-zinc-900">
-                <div className="max-w-6xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="text-center mb-12"
-                    >
-                        <Badge variant="secondary" className="mb-4">Our Journey</Badge>
-                        <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-white mb-4">
-                            Milestones Along the Way
-                        </h2>
-                    </motion.div>
 
-                    <div className="relative">
-                        <div className="absolute left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-emerald-200 dark:bg-emerald-800" />
-                        <div className="space-y-12">
-                            {milestones.map((milestone, index) => (
-                                <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-                                    whileInView={{ opacity: 1, x: 0 }}
-                                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                                    className={`relative flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}
-                                >
-                                    <div className={`w-full md:w-5/12 ${index % 2 === 0 ? 'md:pr-8' : 'md:pl-8'}`}>
-                                        <Card>
-                                            <CardHeader>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <Badge className="bg-emerald-600">{milestone.year}</Badge>
-                                                </div>
-                                                <CardTitle>{milestone.title}</CardTitle>
-                                                <CardDescription>{milestone.description}</CardDescription>
-                                            </CardHeader>
-                                        </Card>
-                                    </div>
-                                    <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 bg-emerald-600 rounded-full border-4 border-white dark:border-zinc-900" />
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             {/* Team Section */}
             <section ref={teamRef} className="py-20 px-6">
@@ -457,67 +413,8 @@ export default function AboutPage() {
                     </div>
                 </div>
             </section>
-
-            {/* Testimonial Section */}
-            <section className="py-20 px-6 bg-emerald-600 dark:bg-emerald-900">
-                <div className="max-w-4xl mx-auto text-center">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.6 }}
-                    >
-                        <FaQuoteLeft className="text-4xl text-white/30 mx-auto mb-6" />
-                        <p className="text-xl md:text-2xl text-white mb-8 leading-relaxed">
-                            "PhotoTours transformed my photography skills and gave me experiences I'll cherish forever.
-                            The expertise of their photographers and the amazing locations made this the best investment in my creative journey."
-                        </p>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-12 h-12 relative rounded-full overflow-hidden">
-                                <Image
-                                    src="/avatar-testimonial.jpg"
-                                    alt="Testimonial"
-                                    fill
-                                    className="object-cover"
-                                />
-                            </div>
-                            <div className="text-left">
-                                <p className="font-semibold text-white">Sarah Johnson</p>
-                                <p className="text-emerald-200 text-sm">5 workshops attended</p>
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="py-20 px-6">
-                <div className="max-w-4xl mx-auto text-center">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                    >
-                        <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-white mb-4">
-                            Ready to Start Your Journey?
-                        </h2>
-                        <p className="text-lg text-zinc-600 dark:text-zinc-400 mb-8">
-                            Join our community of passionate photographers and travelers
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Link href="/events">
-                                <Button className="bg-emerald-600 hover:bg-emerald-700 h-12 px-8">
-                                    Explore Events <FaArrowRight className="ml-2" />
-                                </Button>
-                            </Link>
-                            <Link href="/contact">
-                                <Button variant="outline" className="h-12 px-8">
-                                    Contact Us
-                                </Button>
-                            </Link>
-                        </div>
-                    </motion.div>
-                </div>
-            </section>
         </div>
+        <Footer />
+        </>
     );
 }

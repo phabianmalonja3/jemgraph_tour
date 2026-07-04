@@ -44,7 +44,7 @@ export default function PhotographyPackages() {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', { 
       style: 'currency', 
-      currency: 'USD', 
+      currency: 'TSH', 
       minimumFractionDigits: 0 
     }).format(price);
   };

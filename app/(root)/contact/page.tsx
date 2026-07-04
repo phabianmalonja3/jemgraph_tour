@@ -43,17 +43,17 @@ export default function ContactPage() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e:any) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        toast({
-            title: "Message Sent! 🎉",
-            description: "We'll get back to you within 24 hours. Thank you for reaching out!",
-        });
+//       toast({
+//      titleT: "Message Sent! 🎉",
+//     description: "We'll get back to you within 24 hours. Thank you for reaching out!",
+// });
 
         setFormData({
             name: "",
@@ -340,16 +340,10 @@ export default function ContactPage() {
                                         <FaWhatsapp className="text-2xl text-green-500" />
                                         <div>
                                             <p className="font-semibold">WhatsApp Support</p>
-                                            <p className="text-sm text-zinc-500">+1 (555) 123-4567</p>
+                                            <p className="text-sm text-zinc-500">+255 (0) 754 321 654</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <FaGlobe className="text-2xl text-emerald-600" />
-                                        <div>
-                                            <p className="font-semibold">Live Chat</p>
-                                            <p className="text-sm text-zinc-500">Available 24/7 on our website</p>
-                                        </div>
-                                    </div>
+                                    
                                 </CardContent>
                             </Card>
 

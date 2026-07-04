@@ -7,19 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
     FaCamera,
-   
     FaEnvelope,
     FaMapMarkerAlt,
     FaStar,
-   
     FaAward,
-  
     FaCalendarAlt,
-
     FaSearch,
     FaTimes,
     FaWifi,
-
     FaUser,
     FaAt,
     FaChevronDown
@@ -27,50 +22,17 @@ import {
 import { useEffect, useRef, useState, useCallback } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Footer from "@/components/web/Footer";
 
 
 if (typeof window !== "undefined") {
     gsap.registerPlugin(ScrollTrigger);
 }
 
-// Updated interface based on your actual API response
-interface Photographer {
-    id: string;
-    email: string;
-    name: string | null;
-    rating: number | null;
-    isBusy: boolean;
-    isOnline: boolean;
-    role: string;
-    specialty?: string;
-    location?: string;
-    image?: string;
-    bio?: string;
-    quote?: string;
-    experience?: string;
-    sessions?: number;
-    achievements?: string[];
-    instagram?: string;
-    facebook?: string;
-    twitter?: string;
-}
 
-// Pagination info from API
-interface PageableResponse {
-    content: Photographer[];
-    empty: boolean;
-    first: boolean;
-    last: boolean;
-    number: number;
-    numberOfElements: number;
-    pageable: any;
-    size: number;
-    sort: any;
-    totalElements: number;
-    totalPages: number;
-}
 
-// Generate consistent display name
+
+// Generate consistent rating
 const getDisplayName = (photographer: Photographer): string => {
     if (photographer.name && photographer.name.trim() !== "") {
         return photographer.name;
@@ -82,7 +44,6 @@ const getDisplayName = (photographer: Photographer): string => {
     return `Jemigraph Pro`;
 };
 
-// Generate consistent rating
 const getDisplayRating = (photographer: Photographer): number => {
     if (photographer.rating && photographer.rating > 0) {
         return photographer.rating;
@@ -97,7 +58,7 @@ const getSessionCount = (photographer: Photographer): number => {
     return 20 + (hash % 180);
 };
 
-// Enhanced photographer details
+
 const getPhotographerDetails = (photographer: Photographer): Photographer => {
     const locations = [
         "New York, NY", "Los Angeles, CA", "London, UK", "Paris, France",
@@ -129,7 +90,7 @@ const getPhotographerDetails = (photographer: Photographer): Photographer => {
         rating: rating,
         specialty: "Professional Photographer",
         location: locations[hash % locations.length],
-        image: `/images/hero.jpg`,
+        profileImage: photographer.profileImage,
         bio: bioTemplates[hash % bioTemplates.length],
         quote: quotes[hash % quotes.length],
         experience: `${experienceYears}+ Years`,
@@ -171,6 +132,8 @@ export default function PhotographersPage() {
 
 
 
+            console.log("Fetched photographers data:", data); // Debugging line
+
 
             const enhancedPhotographers = data.content.map(getPhotographerDetails);
             setPhotographersData(data);
@@ -200,14 +163,13 @@ export default function PhotographersPage() {
                         return photographer.name?.toLowerCase().includes(query) || false;
                     case "email":
                         return photographer.email.toLowerCase().includes(query);
-                    case "location":
-                        return photographer.location?.toLowerCase().includes(query) || false;
+
                     case "all":
                     default:
                         return (
                             photographer.name?.toLowerCase().includes(query) ||
                             photographer.email.toLowerCase().includes(query) ||
-                            photographer.location?.toLowerCase().includes(query) ||
+
                             false
                         );
                 }
@@ -273,7 +235,7 @@ export default function PhotographersPage() {
         switch (searchField) {
             case "name": return "Search by photographer name...";
             case "email": return "Search by email address...";
-            case "location": return "Search by location...";
+            // case "location": return "Search by location...";
             default: return "Search by name, email, or location...";
         }
     };
@@ -295,6 +257,7 @@ export default function PhotographersPage() {
     }
 
     return (
+       <>
         <div className="flex flex-col min-h-screen bg-linear-to-b from-zinc-50 to-white dark:from-black dark:to-zinc-900">
             {/* Modern Hero Section */}
             <section ref={heroRef} className="relative overflow-hidden bg-gradient-to-br from-[#25632D] via-emerald-800 to-teal-900">
@@ -321,10 +284,7 @@ export default function PhotographersPage() {
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5 }}
                         >
-                            <Badge className="mb-6 bg-white/10 backdrop-blur-sm text-white border-none hover:bg-white/20 px-4 py-2 text-sm">
-                                <FaCamera className="mr-2 text-emerald-300" />
-                                Jemigraph Expert Network
-                            </Badge>
+
                         </motion.div>
 
                         <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight">
@@ -367,7 +327,7 @@ export default function PhotographersPage() {
                                     { id: "all", label: "All Fields", icon: FaSearch },
                                     { id: "name", label: "Name", icon: FaUser },
                                     { id: "email", label: "Email", icon: FaAt },
-                                    { id: "location", label: "Location", icon: FaMapMarkerAlt }
+
                                 ].map((filter) => {
                                     const Icon = filter.icon;
                                     return (
@@ -375,8 +335,8 @@ export default function PhotographersPage() {
                                             key={filter.id}
                                             onClick={() => setSearchField(filter.id as typeof searchField)}
                                             className={`px-4 py-2 rounded-full text-sm transition-all flex items-center gap-2 backdrop-blur-sm ${searchField === filter.id
-                                                    ? "bg-emerald-500 text-white shadow-lg"
-                                                    : "bg-white/10 text-emerald-100 hover:bg-white/20"
+                                                ? "bg-emerald-500 text-white shadow-lg"
+                                                : "bg-white/10 text-emerald-100 hover:bg-white/20"
                                                 }`}
                                         >
                                             <Icon className="text-xs" />
@@ -449,28 +409,41 @@ export default function PhotographersPage() {
                                     >
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                                             {/* Photographer Image */}
-                                            <div className="relative h-80 overflow-hidden">
-                                                <div className="absolute inset-0 bg-gradient-to-br from-emerald-100 to-blue-100 flex items-center justify-center">
-                                                    <FaCamera className="text-5xl text-emerald-400" />
+                                            <div className="relative h-80 overflow-hidden  py-8">
+                                                <div className="absolute inset-0 bg-gradient-to-br py-8 bg-gray-200 flex items-center justify-center">
+                                                    {/* <FaCamera className="text-5xl text-emerald-400" /> */}
+
+
                                                 </div>
-                                                {photographer.image && (
-                                                    <Image
-                                                        src={photographer.image}
-                                                        alt={photographer.name?.toString() || "Photographer"}
-                                                        fill
-                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                                    />
-                                                )}
+
+
+
+
+
+                                                <div className="p-8">
+                                                    <div className="p-8">
+
+                                                       
+                                                        <Image
+                                                            src={photographer.profileImage ? `${process.env.NEXT_PUBLIC_API_URL}${photographer.profileImage}` : `/default_user.svg`}
+                                                            fill
+                                                            className="object-cover w-full h-full rounded-t-2xl"
+                                                            alt={photographer.name?.toString() || "Photographer"}
+
+                                                            unoptimized
+                                                        />
+                                                    </div>
+                                                </div>
+
 
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                                                 <div className="absolute top-4 right-4 z-10">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 backdrop-blur-sm ${!photographer.isBusy && photographer.isOnline
-                                                            ? "bg-green-500 text-white"
-                                                            : photographer.isBusy
-                                                                ? "bg-red-500 text-white"
-                                                                : "bg-gray-500/90 text-white"
+                                                        ? "bg-green-500 text-white"
+                                                        : photographer.isBusy
+                                                            ? "bg-red-500 text-white"
+                                                            : "bg-gray-500/90 text-white"
                                                         }`}>
                                                         {!photographer.isBusy && photographer.isOnline ? (
                                                             <>
@@ -541,7 +514,7 @@ export default function PhotographersPage() {
                                                     </Button>
                                                 </div>
 
-                                               
+
                                             </div>
                                         </div>
                                     </div>
@@ -646,7 +619,7 @@ export default function PhotographersPage() {
                                         <FaCamera className="text-6xl text-emerald-400" />
                                     </div>
                                     <Image
-                                        src={selectedPhotographer.image || `/api/placeholder/500/600?seed=${selectedPhotographer.id}`}
+                                        src={selectedPhotographer.profileImage || `/api/placeholder/500/600?seed=${selectedPhotographer.id}`}
                                         alt={selectedPhotographer.name || "Photographer"}
                                         fill
                                         className="object-cover"
@@ -675,10 +648,7 @@ export default function PhotographersPage() {
                                         <div>
                                             <h3 className="text-xl font-bold mb-3 text-zinc-900 dark:text-white">Details</h3>
                                             <div className="space-y-3">
-                                                <div className="flex items-center gap-3">
-                                                    <FaMapMarkerAlt className="text-emerald-600" />
-                                                    <span className="text-zinc-700 dark:text-zinc-300">{selectedPhotographer.location}</span>
-                                                </div>
+
                                                 <div className="flex items-center gap-3">
                                                     <FaEnvelope className="text-emerald-600" />
                                                     <span className="text-zinc-700 dark:text-zinc-300">{selectedPhotographer.email}</span>
@@ -706,7 +676,7 @@ export default function PhotographersPage() {
                                     </div>
 
                                     <div className="border-t border-zinc-200 dark:border-zinc-700 pt-6 flex gap-4">
-                                        
+
                                         <Button variant="outline" onClick={() => setSelectedPhotographer(null)}>
                                             Close
                                         </Button>
@@ -719,5 +689,7 @@ export default function PhotographersPage() {
             </AnimatePresence>
 
         </div>
+       <Footer />
+       </>
     );
 }
