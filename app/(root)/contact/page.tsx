@@ -18,6 +18,8 @@ import {
     FaGlobe,
     FaWhatsapp
 } from "react-icons/fa";
+
+import Footer from "@/components/web/Footer";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -120,6 +122,7 @@ export default function ContactPage() {
     ];
 
     return (
+        <>
         <div className="flex flex-col min-h-screen bg-linear-to-b from-zinc-50 to-white dark:from-black dark:to-zinc-900">
             {/* Hero Section */}
             <section className="relative h-[40vh] min-h-75 flex items-center justify-center overflow-hidden">
@@ -375,36 +378,8 @@ export default function ContactPage() {
             </section>
 
 
-            {/* Newsletter Section */}
-            <section className="py-20 px-6 bg-linear-to-r from-emerald-900 to-emerald-700">
-                <div className="max-w-4xl mx-auto text-center">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.6 }}
-                    >
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                            Stay Updated
-                        </h2>
-                        <p className="text-lg text-emerald-100 mb-8">
-                            Subscribe to our newsletter for photography tips, upcoming events, and exclusive offers
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-                            <Input
-                                type="email"
-                                placeholder="Your email address"
-                                className="bg-white dark:bg-white text-zinc-900"
-                            />
-                            <Button className="bg-white text-emerald-600 hover:bg-gray-100">
-                                Subscribe
-                            </Button>
-                        </div>
-                        <p className="text-xs text-emerald-200 mt-4">
-                            We respect your privacy. Unsubscribe at any time.
-                        </p>
-                    </motion.div>
-                </div>
-            </section>
         </div>
+        < Footer/>
+        </>
     );
 }
